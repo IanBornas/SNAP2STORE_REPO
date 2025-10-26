@@ -1,4 +1,10 @@
+<<<<<<< Updated upstream
 // Removed dart:io import — prefer using Uint8List for cross-platform image handling
+=======
+import 'dart:io'
+    show
+        File; // Only import File for type compatibility, but we primarily use Uint8List
+>>>>>>> Stashed changes
 import 'dart:typed_data'; // Required for Uint8List
 import 'package:flutter/material.dart';
 import 'package:flutter_app/auth/auth_service.dart';
@@ -7,7 +13,13 @@ import 'package:flutter_app/views/pages/home_page.dart';
 import 'package:flutter_app/views/pages/map_page.dart';
 import 'package:flutter_app/views/pages/discover_page.dart';
 import 'package:flutter_app/views/pages/profile_page.dart';
+<<<<<<< Updated upstream
 import 'package:go_router/go_router.dart';
+=======
+import 'package:flutter_app/views/pages/registration_page.dart';
+import 'package:flutter_app/views/pages/unified_search_page.dart';
+import 'package:flutter_app/views/post_card.dart';
+>>>>>>> Stashed changes
 import 'package:flutter_app/views/widgets/navbar_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart'; // Required for image selection
@@ -28,19 +40,37 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   final authService = AuthService();
+<<<<<<< Updated upstream
   Uint8List? _imageBytes;
   String? _imageFileName;
+=======
+
+  // === CROSS-PLATFORM IMAGE POSTING STATE & FUNCTIONS ===
+  Uint8List? _imageBytes; // Stores image data as bytes (cross-platform)
+  String?
+  _imageFileName; // Stores the file name from image_picker (useful for upload)
+>>>>>>> Stashed changes
   final _picker = ImagePicker();
 
   void logOut() async {
     await authService.signOut();
   }
 
+<<<<<<< Updated upstream
   Future<String?> _uploadImageToSupabase(Uint8List imageBytes, String fileName) async {
+=======
+  // Supabase Upload Function - now accepts Uint8List
+  // NOTE: Requires a 'post_images' bucket and policies to be set in Supabase.
+  Future<String?> _uploadImageToSupabase(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
+>>>>>>> Stashed changes
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser!.id;
 
+<<<<<<< Updated upstream
       final finalFileName = fileName.isNotEmpty
           ? '${userId}_${DateTime.now().millisecondsSinceEpoch}_$fileName'
           : '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -55,6 +85,36 @@ class _AppShellState extends State<AppShell> {
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading image to Supabase: $e');
+=======
+      // Use the provided fileName or generate a unique one if not available
+      final finalFileName = fileName.isNotEmpty
+          ? '${userId}_${DateTime.now().millisecondsSinceEpoch}_$fileName'
+          : '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final storagePath = 'public/$finalFileName';
+
+      // 1. Upload the byte data to Supabase Storage using uploadBinary
+      await supabase.storage
+          .from('post_images')
+          .uploadBinary(
+            storagePath,
+            imageBytes,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              contentType:
+                  'image/jpeg', // Assuming JPEG, adjust if you handle other formats
+            ),
+          );
+
+      // 2. Get the publicly accessible URL
+      final publicUrl = supabase.storage
+          .from('post_images')
+          .getPublicUrl(storagePath);
+
+      return publicUrl;
+    } catch (e) {
+      print('Error uploading image to Supabase: $e');
+>>>>>>> Stashed changes
       return null;
     }
   }
@@ -66,11 +126,29 @@ class _AppShellState extends State<AppShell> {
         title: const Text('Snap2Store'),
         actions: [
           IconButton(
+<<<<<<< Updated upstream
             onPressed: () => context.push('/search'),
             icon: const Icon(Icons.search),
           ),
           IconButton(
             onPressed: () => darkLightMode.value = !darkLightMode.value,
+=======
+            onPressed: () {
+              // 💡 IMPLEMENT NAVIGATION HERE
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UnifiedSearchPage(), // NAVIGATE
+                ),
+              );
+            },
+            icon: Icon(Icons.search),
+          ),
+          IconButton(
+            onPressed: () {
+              darkLightMode.value = !darkLightMode.value;
+            },
+>>>>>>> Stashed changes
             icon: ValueListenableBuilder(
               valueListenable: darkLightMode,
               builder: (context, isDarkMode, child) => Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
@@ -114,6 +192,10 @@ class _AppShellState extends State<AppShell> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+<<<<<<< Updated upstream
+=======
+          // Reset the image state before showing the dialog
+>>>>>>> Stashed changes
           _imageBytes = null;
           _imageFileName = null;
 
@@ -127,21 +209,49 @@ class _AppShellState extends State<AppShell> {
               return StatefulBuilder(
                 builder: (context, setStateInDialog) {
                   void selectImage() async {
+<<<<<<< Updated upstream
                     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
                     if (pickedFile != null) {
                       final bytes = await pickedFile.readAsBytes();
                       setStateInDialog(() {
                         _imageBytes = bytes;
                         _imageFileName = pickedFile.name;
+=======
+                    final pickedFile = await _picker.pickImage(
+                      source: ImageSource.gallery,
+                    );
+
+                    if (pickedFile != null) {
+                      final bytes = await pickedFile
+                          .readAsBytes(); // Read data as bytes (cross-platform)
+                      setStateInDialog(() {
+                        _imageBytes = bytes;
+                        _imageFileName =
+                            pickedFile.name; // Store original file name
+>>>>>>> Stashed changes
                       });
                     }
                   }
 
                   Future<void> createPost() async {
                     final content = controller.text.trim();
+<<<<<<< Updated upstream
                     if (content.isEmpty && _imageBytes == null) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter text or select an image to post.')));
+=======
+
+                    // Prevent posting if both text and image are empty
+                    if (content.isEmpty && _imageBytes == null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Please enter text or select an image to post.',
+                            ),
+                          ),
+                        );
+>>>>>>> Stashed changes
                       }
                       return;
                     }
@@ -153,19 +263,51 @@ class _AppShellState extends State<AppShell> {
                       return;
                     }
 
+<<<<<<< Updated upstream
                     String? imageUrl;
+=======
+                    // Variable to hold the URL of the uploaded image
+                    String? imageUrl;
+
+                    // 1. UPLOAD IMAGE if one is selected
+>>>>>>> Stashed changes
                     if (_imageBytes != null && _imageFileName != null) {
-                      imageUrl = await _uploadImageToSupabase(_imageBytes!, _imageFileName!);
+                      imageUrl = await _uploadImageToSupabase(
+                        _imageBytes!,
+                        _imageFileName!,
+                      );
                       if (imageUrl == null) {
                         if (context.mounted) {
+<<<<<<< Updated upstream
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to upload image. Post aborted.')));
                           return;
+=======
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Failed to upload image. Post aborted.',
+                              ),
+                            ),
+                          );
+                          return; // Stop execution if image upload fails
+>>>>>>> Stashed changes
                         }
                       }
                     }
 
                     try {
+<<<<<<< Updated upstream
                       await supabase.from('posts').insert({'user_id': user.id, 'content': content, 'image_url': imageUrl});
+=======
+                      // 2. INSERT post data (including image URL) into Supabase
+                      await supabase.from('posts').insert({
+                        'user_id': user.id,
+                        'content': content,
+                        'image_url':
+                            imageUrl, // This will be null if no image was selected
+                      });
+
+>>>>>>> Stashed changes
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post created successfully!')));
@@ -179,12 +321,62 @@ class _AppShellState extends State<AppShell> {
                     title: const Text('Create a Post'),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                     children: [
+<<<<<<< Updated upstream
                       if (_imageBytes != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Image.memory(_imageBytes!, height: 150, fit: BoxFit.cover)),
                       Padding(padding: const EdgeInsets.all(8.0), child: TextField(controller: controller, autofocus: true, maxLines: 4, decoration: const InputDecoration(hintText: 'What’s on your mind?', border: OutlineInputBorder()))),
                       const SizedBox(height: 10),
                       TextButton.icon(icon: const Icon(Icons.image), label: Text(_imageBytes == null ? 'Add Image' : 'Change Image'), onPressed: selectImage),
                       const SizedBox(height: 10),
                       ElevatedButton.icon(icon: const Icon(Icons.send), label: const Text('Post'), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal), onPressed: createPost),
+=======
+                      // Image Preview - uses Image.memory for cross-platform support
+                      if (_imageBytes != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Image.memory(
+                            _imageBytes!, // Display from bytes
+                            height: 150,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+
+                      // Text Field
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          controller: controller,
+                          autofocus: true,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            hintText: 'What’s on your mind?',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Image Picker Button
+                      TextButton.icon(
+                        icon: const Icon(Icons.image),
+                        label: Text(
+                          _imageBytes == null ? 'Add Image' : 'Change Image',
+                        ),
+                        onPressed: selectImage,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Post Button
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.send),
+                        label: const Text('Post'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                        ),
+                        onPressed: createPost, // Calls the combined logic
+                      ),
+>>>>>>> Stashed changes
                     ],
                   );
                 },

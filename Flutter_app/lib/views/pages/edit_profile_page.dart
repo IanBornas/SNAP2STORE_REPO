@@ -1,7 +1,11 @@
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+<<<<<<< Updated upstream
 import 'package:go_router/go_router.dart';
+=======
+import 'package:image_picker/image_picker.dart';
+>>>>>>> Stashed changes
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_app/post/post_service.dart';
 

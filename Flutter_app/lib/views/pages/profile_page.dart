@@ -334,11 +334,24 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           // 💡 FIXED Edit Button Section
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
+<<<<<<< Updated upstream
                 child: SizedBox(
               width: 150,
               child: ElevatedButton.icon(
                 onPressed: () async {
                   await context.push('/edit-profile');
+=======
+            child: SizedBox(
+              width: 150,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfilePage(),
+                    ),
+                  );
+>>>>>>> Stashed changes
                   await _loadProfileAndPosts();
                 },
                 icon: const Icon(Icons.edit, size: 18),
