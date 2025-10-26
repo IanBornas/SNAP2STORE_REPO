@@ -11,11 +11,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   final title = 'Home Page';
 
-<<<<<<< Updated upstream
-  late GoogleMapController mapController;
-=======
   GoogleMapController? mapController;
->>>>>>> Stashed changes
 
   final LatLng _center = const LatLng(14.5995, 120.9842);
 

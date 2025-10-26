@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-// auth_gate is not needed here when using go_router
-import 'package:go_router/go_router.dart';
+import 'package:flutter_app/auth/auth_gate.dart';
 //import 'package:flutter_app/views/widget_tree.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -20,9 +19,12 @@ class WelcomePage extends StatelessWidget {
               child: Image.asset('assets/images/thestrokes.jpeg'),
             ),
             FilledButton(onPressed: () {
-              // Use go_router to navigate to the login route
-              context.go('/login');
-            }, child: const Text("Login"))
+              Navigator.pushReplacement(
+                context, 
+                MaterialPageRoute(builder: (context) {
+                  return AuthGate();
+                }));
+            }, child: Text("Login"))
           ],
         ),
       ), 

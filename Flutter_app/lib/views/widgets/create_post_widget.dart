@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart';
 
 class CreatePostWidget extends StatefulWidget {
   const CreatePostWidget({super.key});
@@ -27,11 +26,10 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
       });
 
       _controller.clear();
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created!')),
       );
-      context.pop(); // Close dialog/page if you want
+      Navigator.pop(context); // Close dialog/page if you want
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));

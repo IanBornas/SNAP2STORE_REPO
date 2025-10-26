@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/auth/auth_service.dart';
 import 'package:flutter_app/data/notifiers.dart';
-import 'package:go_router/go_router.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -52,9 +51,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
       // Use registerUserWithProfile to create auth + profile row
       await authService.registerUserWithProfile(email: email, password: password, username: username);
 
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registration successful — check email to confirm')));
-  context.pop();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registration successful — check email to confirm')));
+      Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Registration error: ${e.toString()}')));
@@ -182,7 +181,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text('Already have an account?'),
-                              TextButton(onPressed: () => context.pop(), child: const Text('Sign in')),
+                              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Sign in')),
                             ],
                           ),
                         ],

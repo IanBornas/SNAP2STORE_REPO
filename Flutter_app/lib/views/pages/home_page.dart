@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-<<<<<<< Updated upstream
-import 'package:go_router/go_router.dart';
-=======
 import 'package:flutter_app/views/pages/guest_profile_page.dart';
->>>>>>> Stashed changes
 // 🚀 THIS IS THE IMPORTANT CHANGE: Import the correct file!
 import 'package:flutter_app/like/like_service.dart';
 
@@ -158,13 +154,6 @@ class _HomePageState extends State<HomePage> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                             // User info and text content
-<<<<<<< Updated upstream
-                                                ListTile(
-                                                onTap: () {
-                                                    if (userId != null && userId.isNotEmpty) {
-                                                        // Navigate using go_router to the guest profile route
-                                                        context.push('/guest/$userId');
-=======
                                             ListTile(
                                                 onTap: () {
                                                     if (userId != null && userId.isNotEmpty) {
@@ -176,7 +165,6 @@ class _HomePageState extends State<HomePage> {
                                                                 ),
                                                             ),
                                                         );
->>>>>>> Stashed changes
                                                     }
                                                 },
                                                 leading: CircleAvatar(
@@ -258,11 +246,7 @@ class _HomePageState extends State<HomePage> {
                                                                 try {
                                                                     // The toggleLike RPC in your service returns the new count (int).
                                                                     // We don't need to use the return value here, as we reload the stream.
-<<<<<<< Updated upstream
-                                                                    await _likeService.toggleLike(postId, _currentUserId);
-=======
                                                                     await _likeService.toggleLike(postId, _currentUserId!);
->>>>>>> Stashed changes
                                                                     
                                                                     // Reload the stream to fetch the updated count and user_liked status.
                                                                     setState(() {
