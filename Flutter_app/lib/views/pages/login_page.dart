@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/auth/auth_service.dart';
 import 'package:flutter_app/data/notifiers.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_app/views/pages/registration_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -132,7 +132,10 @@ class _LoginPageState extends State<LoginPage> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () => context.push('/forgot-password'),
+                              onPressed: () {
+                                // placeholder for forgot password flow
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Forgot password not implemented')));
+                              },
                               child: const Text('Forgot?'),
                             ),
                           ),
@@ -159,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               const Text("Don't have an account?"),
                               TextButton(
-                                onPressed: () => context.push('/register'),
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const RegistrationPage())),
                                 child: const Text('Register'),
                               ),
                             ],

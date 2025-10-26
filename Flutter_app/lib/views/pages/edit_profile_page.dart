@@ -1,7 +1,6 @@
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_app/post/post_service.dart';
 
@@ -37,7 +36,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         .eq('id', user.id)
         .maybeSingle();
 
-    if (!mounted) return;
     if (response != null) {
       setState(() {
         _usernameController.text = response['username'] ?? '';
@@ -64,14 +62,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Profile updated successfully!')),
         );
-        context.pop(); // Go back to ProfilePage
+        Navigator.pop(context); // Go back to ProfilePage
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error updating profile: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error updating profile: $e')),
+      );
     } finally {
       setState(() => _isSaving = false);
     }
@@ -79,7 +75,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _pickNewAvatar() async {
     final imageUrl = await uploadProfilePicture(context);
-    if (!mounted) return;
     if (imageUrl != null) {
       setState(() {
         _profileImageUrl = imageUrl;

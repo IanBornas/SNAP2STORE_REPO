@@ -2,7 +2,7 @@ import 'dart:io' show File;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 Future<String?> uploadProfilePicture(BuildContext context) async {
   final supabase = Supabase.instance.client;
@@ -31,10 +31,10 @@ Future<String?> uploadProfilePicture(BuildContext context) async {
     // Update Supabase profile table
     await supabase.from('profile').update({'avatar_url': publicUrl}).eq('id', user.id);
 
-    debugPrint('✅ Image uploaded successfully!');
+    print('✅ Image uploaded successfully!');
     return publicUrl;
   } catch (e) {
-    debugPrint('❌ Error uploading image: $e');
+    print('❌ Error uploading image: $e');
     return null;
   }
 }
