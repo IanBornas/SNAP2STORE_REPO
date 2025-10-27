@@ -10,7 +10,7 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
   final title = 'Profile Page';
 
@@ -108,9 +108,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfileAndPosts() async {
     if (!mounted) return;
-    
     await _loadProfile();
-    
     if (mounted) {
       // initialize paginated lists
       setState(() {
@@ -126,13 +124,12 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // --- Profile Loading ---
   Future<void> _loadProfile() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
       
-      currentUserId = user.id; // 💡 Set the user ID
+      currentUserId = user.id;
 
       final response = await supabase
           .from('profile')
@@ -185,6 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final page = List<Map<String, dynamic>>.from(raw as List);
       if (refresh) _userPosts.clear();
       if (page.length < limit) _userPostsHasMore = false;
+
       if (page.isNotEmpty) {
         final postIds = page.map((p) => p['id'] as String).toList();
         final likesRaw = await supabase.from('likes').select('post_id, user_id').inFilter('post_id', postIds);
@@ -202,7 +200,6 @@ class _ProfilePageState extends State<ProfilePage> {
           p['user_liked'] = userLiked[pid] ?? false;
         }
       }
-
 
       setState(() {
         _userPosts.addAll(page);
@@ -276,7 +273,6 @@ class _ProfilePageState extends State<ProfilePage> {
     await supabase.auth.signOut();
   }
 
-  // --- Widget for a Single Post Card ---
   Widget _buildPostCard(Map<String, dynamic> post) {
     final content = post['content'] ?? '';
     final imageUrl = post['image_url'] as String?;
@@ -289,7 +285,6 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Post Content and Timestamp
           Padding(
             padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
             child: Text(
@@ -310,7 +305,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           
-          // Image Display (If present)
           if (imageUrl != null && imageUrl.isNotEmpty)
             ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
@@ -341,8 +335,18 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  
+
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(title), backgroundColor: Colors.teal),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       floatingActionButton: const CreatePostFab(),
       body: Column( // Use Column to stack the scrollable view, the edit button, and the logout area
@@ -390,26 +394,21 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const SizedBox(height: 4),
 
-                        // Bio
-                        Text(
-                          bio ?? 'No bio yet.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Edit Button
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const EditProfilePage(),
+                            // Bio
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                bio ?? 'No bio yet.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 14, color: Colors.white70),
                               ),
                             ),
                             const SizedBox(height: 12),
+                            // Removed Edit Button from FlexibleSpaceBar
                           ],
                         ),
+                      ),
+                    ),
 
                     // TabBar is fixed to the bottom of the SliverAppBar
                     bottom: TabBar(
@@ -452,7 +451,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       emptyMessage: 'You haven\'t liked any posts yet.',
                     ),
                   ),
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
