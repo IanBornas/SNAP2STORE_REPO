@@ -5,7 +5,19 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
 class BackendService {
-  static const String baseUrl = 'http://127.0.0.1:5000'; // Update this for production
+  // Use a platform-aware backend URL. When running on Android emulators
+  // the host machine's localhost is reachable at 10.0.2.2. For iOS
+  // simulator and web (dev) we can use 127.0.0.1. Change these values
+  // if you're using a device or a different emulator (Genymotion uses
+  // 10.0.3.2) or point to a LAN/remote address for real devices.
+  static String get baseUrl {
+    if (kIsWeb) return 'http://127.0.0.1:5000';
+    // defaultTargetPlatform is safe to use across platforms (no dart:io import)
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:5000';
+    }
+    return 'http://127.0.0.1:5000'; // iOS simulator / desktop
+  }
 
   // Helper methods for web file handling
   static Future<Uint8List> _readFileAsBytesWeb(String filePath) async {
