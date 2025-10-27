@@ -5,10 +5,10 @@ import 'package:flutter_app/like/like_service.dart';
 import 'package:flutter_app/views/widgets/create_post_fab.dart';
 
 class HomePage extends StatefulWidget {
-    const HomePage({super.key});
+  const HomePage({super.key});
 
-    @override
-    State<HomePage> createState() => _HomePageState();
+  @override
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
@@ -312,7 +312,9 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                     ),
                                 );
-                            },
+                              },
+                            ),
+                          ),
                         ),
                     ),
             );
