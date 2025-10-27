@@ -30,6 +30,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
         // Allow injecting the Google Maps API key from a local property without
         // committing the key into source control. To set the key for local
         // builds, add the following line to android/local.properties:

@@ -1,3 +1,5 @@
+
+// Only import File for type compatibility, but we primarily use Uint8List
 import 'dart:io'
     show
         File; // Only import File for type compatibility, but we primarily use Uint8List
@@ -53,7 +55,7 @@ class _WidgetTreeState extends State<WidgetTree> {
       final finalFileName = fileName.isNotEmpty
           ? '${userId}_${DateTime.now().millisecondsSinceEpoch}_$fileName'
           : '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
+      
       final storagePath = 'public/$finalFileName';
 
       // 1. Upload the byte data to Supabase Storage using uploadBinary
@@ -192,7 +194,6 @@ class _WidgetTreeState extends State<WidgetTree> {
                   // Function to handle posting logic
                   Future<void> createPost() async {
                     final content = controller.text.trim();
-
                     // Prevent posting if both text and image are empty
                     if (content.isEmpty && _imageBytes == null) {
                       if (context.mounted) {
@@ -220,7 +221,6 @@ class _WidgetTreeState extends State<WidgetTree> {
 
                     // Variable to hold the URL of the uploaded image
                     String? imageUrl;
-
                     // 1. UPLOAD IMAGE if one is selected
                     if (_imageBytes != null && _imageFileName != null) {
                       imageUrl = await _uploadImageToSupabase(
@@ -284,7 +284,6 @@ class _WidgetTreeState extends State<WidgetTree> {
                             fit: BoxFit.cover,
                           ),
                         ),
-
                       // Text Field
                       Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -298,7 +297,6 @@ class _WidgetTreeState extends State<WidgetTree> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
 
                       // Image Picker Button
@@ -311,6 +309,7 @@ class _WidgetTreeState extends State<WidgetTree> {
                       ),
 
                       const SizedBox(height: 10),
+
 
                       // Post Button
                       ElevatedButton.icon(
