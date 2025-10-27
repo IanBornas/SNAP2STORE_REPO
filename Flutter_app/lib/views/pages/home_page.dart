@@ -190,6 +190,149 @@ class _HomePageState extends State<HomePage> {
                                   child: Center(
                                     child: Text('Failed to load image 😔'),
                                   ),
+=======
+                        child: ListView.builder(
+                            itemCount: posts.length,
+                            itemBuilder: (context, index) {
+                                final post = posts[index];
+                                final postId = post['id'] as String;
+                                final profile = post['profile'] ?? {};
+                                final username = profile['username'] ?? 'Unknown';
+                                final avatarUrl = profile['avatar_url'];
+                                final content = post['content'] ?? '';
+                                final imageUrl = post['image_url'] as String?;
+                                final createdAt = post['created_at'] ?? '';
+                                final userId = post['user_id'] as String?;
+
+                                final int likeCount = post['like_count'] as int? ?? 0;
+                                final bool userLiked = post['user_liked'] as bool? ?? false;
+
+                                return Card(
+                                    margin:
+                                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    elevation: 3,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                            // User info and text content
+                                            ListTile(
+                                                onTap: () {
+                                                    if (userId != null && userId.isNotEmpty) {
+                                                        Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                                builder: (context) => GuestProfilePage(
+                                                                    userId: userId,
+                                                                ),
+                                                            ),
+                                                        );
+                                                    }
+                                                },
+                                                leading: CircleAvatar(
+                                                    backgroundImage: avatarUrl != null && avatarUrl != ''
+                                                        ? NetworkImage(avatarUrl)
+                                                        : const AssetImage('assets/default_avatar.png')
+                                                                as ImageProvider,
+                                                ),
+                                                title: Text(
+                                                    username,
+                                                    style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16,
+                                                    ),
+                                                ),
+                                                subtitle: Padding(
+                                                    padding: const EdgeInsets.only(top: 4.0),
+                                                    child: Text(content),
+                                                ),
+                                                trailing: Text(
+                                                    createdAt != ''
+                                                        ? DateTime.parse(createdAt)
+                                                                .toLocal()
+                                                                .toString()
+                                                                .substring(0, 16)
+                                                        : '',
+                                                    style:
+                                                        const TextStyle(fontSize: 12, color: Colors.grey),
+                                                ),
+                                            ),
+
+                                            // Image display
+                                            if (imageUrl != null && imageUrl.isNotEmpty)
+                                                Padding(
+                                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                                    child: ClipRRect(
+                                                        borderRadius: BorderRadius.circular(8.0),
+                                                        child: Image.network(
+                                                            imageUrl,
+                                                            fit: BoxFit.cover,
+                                                            width: double.infinity,
+                                                            loadingBuilder: (context, child, loadingProgress) {
+                                                                if (loadingProgress == null) return child;
+                                                                return const SizedBox(
+                                                                    height: 150,
+                                                                    child: Center(child: CircularProgressIndicator()),
+                                                                );
+                                                            },
+                                                            errorBuilder: (context, error, stackTrace) {
+                                                                debugPrint('Image load failed for URL: $imageUrl. Error: $error');
+                                                                return const SizedBox(
+                                                                    height: 150,
+                                                                    child: Center(
+                                                                        child: Text('Failed to load image'),
+                                                                    ),
+                                                                );
+                                                            },
+                                                        ),
+                                                    ),
+                                                ),
+
+                                            // Like button and count
+                                            Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                                child: Row(
+                                                    children: [
+                                                        IconButton(
+                                                            icon: Icon(
+                                                                userLiked ? Icons.favorite : Icons.favorite_border,
+                                                                color: userLiked ? Colors.red : Colors.grey,
+                                                            ),
+                                                            onPressed: () async {
+                                                                if (_currentUserId == null) {
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                        const SnackBar(content: Text('Please log in to like a post.')),
+                                                                    );
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    // The toggleLike RPC in your service returns the new count (int).
+                                                                    // We don't need to use the return value here, as we reload the stream.
+                                                                    await _likeService.toggleLike(postId, _currentUserId!);
+                                                                    
+                                                                    // Reload the stream to fetch the updated count and user_liked status.
+                                                                    setState(() {
+                                                                        _postsStream = _getRealtimePosts();
+                                                                    });
+                                                                } catch (e) {
+                                                                    debugPrint('Error toggling like: $e');
+                                                                    if (context.mounted) {
+                                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                                            const SnackBar(content: Text('Failed to update like status.')),
+                                                                        );
+                                                                    }
+                                                                }
+                                                            },
+                                                        ),
+                                                        Text('$likeCount likes'),
+                                                    ],
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+
                                 );
                               },
                             ),

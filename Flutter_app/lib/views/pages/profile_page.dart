@@ -288,6 +288,49 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
+          ),
+          
+          // 💡 FIXED Edit Button Section
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: SizedBox(
+              width: 150,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfilePage(),
+                    ),
+                  );
+                  await _loadProfileAndPosts();
+                },
+                icon: const Icon(Icons.edit, size: 18),
+                label: const Text('Edit Profile'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade50,
+                  foregroundColor: Colors.teal.shade800,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ),
+
+          // 💡 FIXED Logout Button (Moved from original bottomNavigationBar)
+          SizedBox(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Logout'),
+                  onTap: _logout,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

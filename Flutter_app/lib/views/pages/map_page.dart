@@ -21,6 +21,7 @@ class _MapPageState extends State<MapPage> {
   String? _errorMessage;
   Set<Marker> _markers = {};
 
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +31,7 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
+  GoogleMapController? mapController;
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
