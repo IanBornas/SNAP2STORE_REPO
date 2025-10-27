@@ -12,7 +12,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  GoogleMapController? mapController;
+  late GoogleMapController mapController;
   final LatLng _center = const LatLng(14.5995, 120.9842);
   Position? _currentPosition;
   bool _isLoadingLocation = false;
@@ -20,7 +20,6 @@ class _MapPageState extends State<MapPage> {
   Map<String, dynamic>? _storeResults;
   String? _errorMessage;
   Set<Marker> _markers = {};
-
 
   @override
   void initState() {
@@ -31,7 +30,6 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  GoogleMapController? mapController;
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
@@ -47,7 +45,7 @@ class _MapPageState extends State<MapPage> {
         });
 
         // Move camera to current location
-  mapController?.animateCamera(
+        mapController.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
             15.0,
@@ -147,15 +145,6 @@ class _MapPageState extends State<MapPage> {
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
-  }
-
-  @override
-  void dispose() {
-    // Dispose the map controller to free native resources (prevents
-    // leaking ImageReader/Surface buffers on Android when the page is
-    // opened/closed repeatedly).
-    mapController?.dispose();
-    super.dispose();
   }
 
   @override
@@ -278,7 +267,7 @@ class _MapPageState extends State<MapPage> {
                               subtitle: Text(store['vicinity']),
                               trailing: Text('${store['rating']} ⭐'),
                               onTap: () {
-                                mapController?.animateCamera(
+                                mapController.animateCamera(
                                   CameraUpdate.newLatLngZoom(
                                     LatLng(store['lat'], store['lng']),
                                     18.0,
