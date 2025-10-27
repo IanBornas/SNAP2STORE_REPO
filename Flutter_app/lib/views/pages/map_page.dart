@@ -21,7 +21,6 @@ class _MapPageState extends State<MapPage> {
   String? _errorMessage;
   Set<Marker> _markers = {};
 
-
   @override
   void initState() {
     super.initState();
@@ -31,7 +30,6 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  GoogleMapController? mapController;
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
@@ -47,7 +45,7 @@ class _MapPageState extends State<MapPage> {
         });
 
         // Move camera to current location
-  mapController?.animateCamera(
+        mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
             15.0,

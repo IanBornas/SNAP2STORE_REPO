@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_app/views/pages/guest_profile_page.dart'; 
+import 'package:go_router/go_router.dart';
+import 'package:flutter_app/like/like_service.dart';
+import 'package:flutter_app/views/widgets/create_post_fab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,191 +12,160 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final supabase = Supabase.instance.client;
-  final title = 'Home Page';
+    final supabase = Supabase.instance.client;
+    final title = 'Home Page';
 
-  late final Stream<List<Map<String, dynamic>>> _postsStream;
+    final LikeService _likeService = LikeService();
+    final String? _currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-  @override
-  void initState() {
-    super.initState();
-    _postsStream = _getRealtimePosts();
-  }
+    // Pagination state
+    final List<Map<String, dynamic>> _posts = [];
+    final int _limit = 10;
+    int _page = 0; // zero-based page index
+    bool _isLoading = false;
+    bool _hasMore = true;
+    late final ScrollController _scrollController;
 
-  /// Creates a realtime stream of posts and joins with profile info
-  Stream<List<Map<String, dynamic>>> _getRealtimePosts() {
-    return supabase
-        .from('posts')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .asyncMap((posts) async {
-      if (posts.isEmpty) return posts;
+    @override
+    void initState() {
+        super.initState();
+        _scrollController = ScrollController()..addListener(_onScroll);
+        _fetchPostsPage(refresh: true);
+    }
 
-      // Collect unique user IDs
-      final userIds = posts.map((p) => p['user_id']).toSet().toList();
+    @override
+    void dispose() {
+        _scrollController.removeListener(_onScroll);
+        _scrollController.dispose();
+        super.dispose();
+    }
 
-      // Fetch all related profiles in a single query
-      final profiles = await supabase
-          .from('profile')
-          .select('id, username, avatar_url')
-          .inFilter('id', userIds);
+    void _onScroll() {
+        if (!_hasMore || _isLoading) return;
+        if (_scrollController.position.extentAfter < 300) {
+            _fetchPostsPage();
+        }
+    }
 
-      // Map each user_id to their profile
-      final profileMap = {
-        for (var p in profiles) p['id']: p,
-      };
+    Future<void> _fetchPostsPage({bool refresh = false}) async {
+        if (_isLoading) return;
+        setState(() {
+            _isLoading = true;
+        });
 
-      // Attach profiles to posts
-      for (final post in posts) {
-        post['profile'] = profileMap[post['user_id']];
-      }
+        if (refresh) {
+            _page = 0;
+            _hasMore = true;
+        }
 
-      return posts;
-    });
-  }
+        final from = _page * _limit;
+        final to = from + _limit - 1;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.teal,
-      ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _postsStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting ||
-              !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        try {
+            final raw = await supabase
+                .from('posts')
+                .select()
+                .order('created_at', ascending: false)
+                .range(from, to);
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading posts: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-              ),
-            );
-          }
+            final pagePosts = List<Map<String, dynamic>>.from(raw as List);
 
-          final posts = snapshot.data!;
-          if (posts.isEmpty) {
-            return const Center(
-              child: Text(
-                'No posts yet. Be the first to share something!',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            );
-          }
+            if (refresh) {
+                _posts.clear();
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() {
-                _postsStream = _getRealtimePosts(); // reload stream manually
-              });
-            },
-            child: ListView.builder(
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                final profile = post['profile'] ?? {};
-                final username = profile['username'] ?? 'Unknown';
-                final avatarUrl = profile['avatar_url'];
-                final content = post['content'] ?? '';
-                final imageUrl = post['image_url'] as String?; // Cast as String? for safety
-                final createdAt = post['created_at'] ?? '';
-                // The ID of the post author
-                final userId = post['user_id'] as String?; 
+            if (pagePosts.length < _limit) {
+                _hasMore = false;
+            }
 
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // USER INFO AND TEXT CONTENT 
-                      ListTile(
-                        // 💡 ADD onTap TO NAVIGATE TO THE GUEST PROFILE PAGE
-                        onTap: () {
-                          if (userId != null && userId.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => GuestProfilePage(
-                                  userId: userId, // Pass the author's user ID
-                                ),
-                              ),
-                            );
-                          }
+            // Attach profiles and like data similar to previous implementation
+            if (pagePosts.isNotEmpty) {
+                final postIds = pagePosts.map((p) => p['id'] as String).toList();
+                final userIds = pagePosts.map((p) => p['user_id']).whereType<String>().toSet().toList();
+
+                // batch fetch profiles
+                final profiles = await supabase
+                    .from('profile')
+                    .select('id, username, avatar_url')
+                    .inFilter('id', userIds);
+                final profileMap = {for (var p in profiles) p['id']: p};
+
+                // fetch likes
+                final allLikesResponse = await supabase
+                    .from('likes')
+                    .select('post_id, user_id')
+                    .inFilter('post_id', postIds);
+                final allLikesData = allLikesResponse as List<dynamic>;
+
+                final Map<String, int> likeCounts = {};
+                final Map<String, bool> userLikedStatus = {};
+
+                for (final like in allLikesData) {
+                    final postId = like['post_id'] as String;
+                    likeCounts.update(postId, (value) => value + 1, ifAbsent: () => 1);
+                    if (like['user_id'] == _currentUserId) {
+                        userLikedStatus[postId] = true;
+                    }
+                }
+
+                for (final post in pagePosts) {
+                    final postId = post['id'] as String;
+                    post['profile'] = profileMap[post['user_id']];
+                    post['like_count'] = likeCounts[postId] ?? 0;
+                    post['user_liked'] = userLikedStatus[postId] ?? false;
+                }
+            }
+
+            setState(() {
+                _posts.addAll(pagePosts);
+                _page += 1;
+            });
+        } catch (e, st) {
+            debugPrint('Error fetching posts page: $e\n$st');
+            if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to load posts.')),
+                );
+            }
+        } finally {
+            if (mounted) setState(() => _isLoading = false);
+        }
+    }
+
+    @override
+    Widget build(BuildContext context) {
+        return Scaffold(
+            appBar: AppBar(
+                title: Text(title),
+                backgroundColor: Colors.teal,
+            ),
+            floatingActionButton: const CreatePostFab(),
+            body: _isLoading && _posts.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _posts.isEmpty
+                    ? const Center(
+                        child: Text(
+                            'No posts yet. Be the first to share something!',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                    )
+                    : RefreshIndicator(
+                        onRefresh: () async {
+                            await _fetchPostsPage(refresh: true);
                         },
-                        
-                        leading: CircleAvatar(
-                          backgroundImage: avatarUrl != null && avatarUrl != ''
-                              ? NetworkImage(avatarUrl)
-                              : const AssetImage('assets/default_avatar.png')
-                                    as ImageProvider,
-                        ),
-                        title: Text(
-                          username,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(content),
-                        ),
-                        trailing: Text(
-                          createdAt != ''
-                              ? DateTime.parse(createdAt)
-                                  .toLocal()
-                                  .toString()
-                                  .substring(0, 16)
-                              : '',
-                          style:
-                              const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
-                      
-                      // 🖼️ Image Display 
-                      if (imageUrl != null && imageUrl.isNotEmpty) 
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              // Add headers for cache control (optional, but good practice)
-                              headers: const {'accept': 'image/*'}, 
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: SizedBox(
-                                    height: 150, // Give it a placeholder height
-                                    child: Center(child: CircularProgressIndicator()),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                // Print the error to the console for debugging
-                                debugPrint('Image load failed for URL: $imageUrl. Error: $error');
-                                return const SizedBox(
-                                  height: 150,
-                                  child: Center(
-                                    child: Text('Failed to load image 😔'),
-                                  ),
-=======
                         child: ListView.builder(
-                            itemCount: posts.length,
+                            controller: _scrollController,
+                            itemCount: _posts.length + (_hasMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                                final post = posts[index];
+                                if (index >= _posts.length) {
+                                    // loading indicator at the bottom
+                                    return const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(child: CircularProgressIndicator()),
+                                    );
+                                }
+
+                                final post = _posts[index];
                                 final postId = post['id'] as String;
                                 final profile = post['profile'] ?? {};
                                 final username = profile['username'] ?? 'Unknown';
@@ -208,144 +179,144 @@ class _HomePageState extends State<HomePage> {
                                 final bool userLiked = post['user_liked'] as bool? ?? false;
 
                                 return Card(
-                                    margin:
-                                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     elevation: 3,
                                     shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                            // User info and text content
-                                            ListTile(
-                                                onTap: () {
-                                                    if (userId != null && userId.isNotEmpty) {
-                                                        Navigator.push(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                                builder: (context) => GuestProfilePage(
-                                                                    userId: userId,
-                                                                ),
-                                                            ),
-                                                        );
-                                                    }
-                                                },
-                                                leading: CircleAvatar(
-                                                    backgroundImage: avatarUrl != null && avatarUrl != ''
-                                                        ? NetworkImage(avatarUrl)
-                                                        : const AssetImage('assets/default_avatar.png')
-                                                                as ImageProvider,
-                                                ),
-                                                title: Text(
-                                                    username,
-                                                    style: const TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 16,
+                                    // 💡 NEW: InkWell to make the entire card content clickable
+                                    child: InkWell(
+                                        onTap: () {
+                                            // Navigate to the post detail page
+                                            context.push('/post_detail/$postId');
+                                        },
+                                        child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                                // User info and text content (kept within a GestureDetector/InkWell for profile nav)
+                                                ListTile(
+                                                    onTap: () {
+                                                        if (userId != null && userId.isNotEmpty) {
+                                                            context.push('/guest/$userId');
+                                                        }
+                                                    },
+                                                    leading: CircleAvatar(
+                                                        backgroundImage: avatarUrl != null && avatarUrl != ''
+                                                            ? NetworkImage(avatarUrl)
+                                                            : const AssetImage('assets/default_avatar.png')
+                                                                  as ImageProvider,
                                                     ),
-                                                ),
-                                                subtitle: Padding(
-                                                    padding: const EdgeInsets.only(top: 4.0),
-                                                    child: Text(content),
-                                                ),
-                                                trailing: Text(
-                                                    createdAt != ''
-                                                        ? DateTime.parse(createdAt)
-                                                                .toLocal()
-                                                                .toString()
-                                                                .substring(0, 16)
-                                                        : '',
-                                                    style:
-                                                        const TextStyle(fontSize: 12, color: Colors.grey),
-                                                ),
-                                            ),
-
-                                            // Image display
-                                            if (imageUrl != null && imageUrl.isNotEmpty)
-                                                Padding(
-                                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                                                    child: ClipRRect(
-                                                        borderRadius: BorderRadius.circular(8.0),
-                                                        child: Image.network(
-                                                            imageUrl,
-                                                            fit: BoxFit.cover,
-                                                            width: double.infinity,
-                                                            loadingBuilder: (context, child, loadingProgress) {
-                                                                if (loadingProgress == null) return child;
-                                                                return const SizedBox(
-                                                                    height: 150,
-                                                                    child: Center(child: CircularProgressIndicator()),
-                                                                );
-                                                            },
-                                                            errorBuilder: (context, error, stackTrace) {
-                                                                debugPrint('Image load failed for URL: $imageUrl. Error: $error');
-                                                                return const SizedBox(
-                                                                    height: 150,
-                                                                    child: Center(
-                                                                        child: Text('Failed to load image'),
-                                                                    ),
-                                                                );
-                                                            },
+                                                    title: Text(
+                                                        username,
+                                                        style: const TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 16,
                                                         ),
                                                     ),
+                                                    subtitle: Padding(
+                                                        padding: const EdgeInsets.only(top: 4.0),
+                                                        child: Text(content),
+                                                    ),
+                                                    trailing: Text(
+                                                        createdAt != ''
+                                                            ? DateTime.parse(createdAt).toLocal().toString().substring(0, 16)
+                                                            : '',
+                                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                                    ),
                                                 ),
 
-                                            // Like button and count
-                                            Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                                child: Row(
-                                                    children: [
-                                                        IconButton(
-                                                            icon: Icon(
-                                                                userLiked ? Icons.favorite : Icons.favorite_border,
-                                                                color: userLiked ? Colors.red : Colors.grey,
-                                                            ),
-                                                            onPressed: () async {
-                                                                if (_currentUserId == null) {
-                                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                                        const SnackBar(content: Text('Please log in to like a post.')),
+                                                // Image display
+                                                if (imageUrl != null && imageUrl.isNotEmpty)
+                                                    Padding(
+                                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                                        child: ClipRRect(
+                                                            borderRadius: BorderRadius.circular(8.0),
+                                                            child: Image.network(
+                                                                imageUrl,
+                                                                fit: BoxFit.cover,
+                                                                width: double.infinity,
+                                                                loadingBuilder: (context, child, loadingProgress) {
+                                                                    if (loadingProgress == null) return child;
+                                                                    return const SizedBox(
+                                                                        height: 150,
+                                                                        child: Center(child: CircularProgressIndicator()),
                                                                     );
-                                                                    return;
-                                                                }
-                                                                try {
-                                                                    // The toggleLike RPC in your service returns the new count (int).
-                                                                    // We don't need to use the return value here, as we reload the stream.
-                                                                    await _likeService.toggleLike(postId, _currentUserId!);
-                                                                    
-                                                                    // Reload the stream to fetch the updated count and user_liked status.
-                                                                    setState(() {
-                                                                        _postsStream = _getRealtimePosts();
-                                                                    });
-                                                                } catch (e) {
-                                                                    debugPrint('Error toggling like: $e');
-                                                                    if (context.mounted) {
-                                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                                            const SnackBar(content: Text('Failed to update like status.')),
-                                                                        );
-                                                                    }
-                                                                }
-                                                            },
+                                                                },
+                                                                errorBuilder: (context, error, stackTrace) {
+                                                                    debugPrint('Image load failed for URL: $imageUrl. Error: $error');
+                                                                    return const SizedBox(
+                                                                        height: 150,
+                                                                        child: Center(child: Text('Failed to load image')),
+                                                                    );
+                                                                },
+                                                            ),
                                                         ),
-                                                        Text('$likeCount likes'),
-                                                    ],
-                                                ),
-                                            ),
-                                        ],
-                                    ),
+                                                    ),
 
+                                                // Like and Comment buttons
+                                                Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                                    child: Row(
+                                                        children: [
+                                                            IconButton(
+                                                                icon: Icon(
+                                                                    userLiked ? Icons.favorite : Icons.favorite_border,
+                                                                    color: userLiked ? Colors.red : Colors.grey,
+                                                                ),
+                                                                onPressed: () async {
+                                                                    if (_currentUserId == null) {
+                                                                        if (context.mounted) {
+                                                                            ScaffoldMessenger.of(context).showSnackBar(
+                                                                                const SnackBar(content: Text('Please log in to like a post.')),
+                                                                            );
+                                                                        }
+                                                                        return;
+                                                                    }
+                                                                    try {
+                                                                        await _likeService.toggleLike(postId, _currentUserId);
+                                                                        // Refresh current loaded pages to reflect like change
+                                                                        if (mounted) {
+                                                                            setState(() {
+                                                                                _posts.clear();
+                                                                                _page = 0;
+                                                                                _hasMore = true;
+                                                                            });
+                                                                            await _fetchPostsPage(refresh: true);
+                                                                        }
+                                                                    } catch (e) {
+                                                                        debugPrint('Error toggling like: $e');
+                                                                        if (context.mounted) {
+                                                                            ScaffoldMessenger.of(context).showSnackBar(
+                                                                                const SnackBar(content: Text('Failed to update like status.')),
+                                                                            );
+                                                                        }
+                                                                    }
+                                                                },
+                                                            ),
+                                                            Text('$likeCount likes'),
+                                                            
+                                                            // 💡 NEW: Comment Action Button
+                                                            const SizedBox(width: 16),
+                                                            TextButton.icon(
+                                                                icon: const Icon(Icons.comment_outlined, color: Colors.grey),
+                                                                label: const Text('Comments'),
+                                                                onPressed: () {
+                                                                    // Navigate to the post detail page
+                                                                    context.push('/post_detail/$postId');
+                                                                },
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
                                 );
                               },
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
+                    ),
+            );
+    }
 }
