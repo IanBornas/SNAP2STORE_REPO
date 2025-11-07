@@ -33,8 +33,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   String? currentUserId;
   
-  late ScrollController _userPostsController;
-  late ScrollController _likedPostsController;
 
   late TabController _tabController;
 
@@ -42,18 +40,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _userPostsController = ScrollController();
-    _likedPostsController = ScrollController();
-    _userPostsController.addListener(() {
-      if (_userPostsController.position.pixels >= _userPostsController.position.maxScrollExtent - 200) {
-        if (!_userPostsLoading && _userPostsHasMore) _fetchUserPostsPage();
-      }
-    });
-    _likedPostsController.addListener(() {
-      if (_likedPostsController.position.pixels >= _likedPostsController.position.maxScrollExtent - 200) {
-        if (!_likedPostsLoading && _likedPostsHasMore) _fetchLikedPostsPage();
-      }
-    });
+    // Use NestedScrollView coordination. Inner lists will trigger pagination via
+    // ScrollNotifications so we avoid separate ScrollControllers that break the
+    // coordinated collapsing behavior of the SliverAppBar.
 
     _loadProfileAndPosts();
   }
@@ -61,14 +50,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   @override
   void dispose() {
     _tabController.dispose();
-    _userPostsController.dispose();
-    _likedPostsController.dispose();
+    // No inner controllers to dispose anymore
     super.dispose();
   }
 
   Widget _buildPaginatedPostList({
     required List<Map<String, dynamic>> posts,
-    required ScrollController controller,
     required bool isLoading,
     required bool hasMore,
     required String emptyMessage,
@@ -83,26 +70,44 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       );
     }
 
-    return ListView.builder(
-      controller: controller,
-      itemCount: posts.length + (hasMore ? 1 : 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-      itemBuilder: (context, index) {
-        if (index >= posts.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(child: CircularProgressIndicator()),
-          );
+    // Use NotificationListener to detect scrolling events from the inner
+    // ListView so NestedScrollView can coordinate the outer SliverAppBar.
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollUpdateNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels >= metrics.maxScrollExtent - 200) {
+            // Determine which list is notifying based on the posts reference
+            if (identical(posts, _userPosts)) {
+              if (!_userPostsLoading && _userPostsHasMore) _fetchUserPostsPage();
+            } else if (identical(posts, _likedPosts)) {
+              if (!_likedPostsLoading && _likedPostsHasMore) _fetchLikedPostsPage();
+            }
+          }
         }
-        final post = posts[index];
-        return InkWell(
-          onTap: () {
-            final postId = post['id'] as String?;
-            if (postId != null) context.push('/post_detail/$postId');
-          },
-          child: _buildPostCard(post),
-        );
+        return false;
       },
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: posts.length + (hasMore ? 1 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+        itemBuilder: (context, index) {
+          if (index >= posts.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final post = posts[index];
+          return InkWell(
+            onTap: () {
+              final postId = post['id'] as String?;
+              if (postId != null) context.push('/post_detail/$postId');
+            },
+            child: _buildPostCard(post),
+          );
+        },
+      ),
     );
   }
 
@@ -433,7 +438,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     onRefresh: _loadProfileAndPosts,
                     child: _buildPaginatedPostList(
                       posts: _userPosts,
-                      controller: _userPostsController,
                       isLoading: _userPostsLoading,
                       hasMore: _userPostsHasMore,
                       emptyMessage: 'You haven\'t posted anything yet.',
@@ -445,7 +449,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     onRefresh: _loadProfileAndPosts,
                     child: _buildPaginatedPostList(
                       posts: _likedPosts,
-                      controller: _likedPostsController,
                       isLoading: _likedPostsLoading,
                       hasMore: _likedPostsHasMore,
                       emptyMessage: 'You haven\'t liked any posts yet.',

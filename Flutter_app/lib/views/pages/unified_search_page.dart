@@ -124,12 +124,22 @@ class _UnifiedSearchPageState extends State<UnifiedSearchPage> {
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
+              cursorColor: Colors.teal,
+              style: TextStyle(
+                fontSize: 18,
+                color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87,
+                height: 1.2,
+              ),
               decoration: InputDecoration(
                 hintText: 'Search users or posts...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
+                  fontSize: 16,
+                ),
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color?.withOpacity(0.8)),
                 suffixIcon: _currentSearchTerm.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: Icon(Icons.clear, color: Theme.of(context).iconTheme.color),
                         onPressed: () {
                           _searchController.clear();
                           setState(() {
@@ -140,12 +150,13 @@ class _UnifiedSearchPageState extends State<UnifiedSearchPage> {
                         },
                       )
                     : null,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25.0),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Colors.grey.shade200,
+                fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey.shade100,
               ),
             ),
           ),
