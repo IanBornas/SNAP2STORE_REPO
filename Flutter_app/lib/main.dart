@@ -36,5 +36,3 @@ class MyApp extends StatelessWidget {
     );
   } 
 }
-
---- a/file:///c%3A/Z/Github/Snap2Store/SNAP2STORE_REPO/Flutter_app/lib/views/pages/home_page.dart 
