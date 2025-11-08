@@ -1,0 +1,10 @@
+Flask==2.3.3
+torch>=2.6.0
+torchvision>=0.21.0
+Pillow>=10.0.0
+google-cloud-vision>=3.0.0
+googlemaps>=4.10.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+Flask-Limiter>=3.5.0
+Flask-CORS>=4.0.0
