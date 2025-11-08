@@ -31,8 +31,7 @@ class _GuestProfilePageState extends State<GuestProfilePage>
   bool _likedPostsHasMore = true;
   bool _likedPostsLoading = false;
 
-  late ScrollController _userPostsController;
-  late ScrollController _likedPostsController;
+  // No inner ScrollControllers: use NotificationListener in the inner lists
 
   late TabController _tabController;
 
@@ -40,18 +39,8 @@ class _GuestProfilePageState extends State<GuestProfilePage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _userPostsController = ScrollController();
-    _likedPostsController = ScrollController();
-    _userPostsController.addListener(() {
-      if (_userPostsController.position.pixels >= _userPostsController.position.maxScrollExtent - 200) {
-        if (!_userPostsLoading && _userPostsHasMore) _fetchUserPostsPage(widget.userId);
-      }
-    });
-    _likedPostsController.addListener(() {
-      if (_likedPostsController.position.pixels >= _likedPostsController.position.maxScrollExtent - 200) {
-        if (!_likedPostsLoading && _likedPostsHasMore) _fetchLikedPostsPage(widget.userId);
-      }
-    });
+    // Use NestedScrollView coordination. Inner lists will notify scroll events
+    // via NotificationListener so the SliverAppBar collapses/expands with user scroll.
 
     _loadProfileAndPosts(widget.userId);
   }
@@ -59,8 +48,7 @@ class _GuestProfilePageState extends State<GuestProfilePage>
   @override
   void dispose() {
     _tabController.dispose();
-    _userPostsController.dispose();
-    _likedPostsController.dispose();
+  // No inner controllers to dispose
     super.dispose();
   }
 
@@ -283,7 +271,7 @@ class _GuestProfilePageState extends State<GuestProfilePage>
               pinned: true, // Keep the TabBar at the top when scrolling
               floating: true,
               snap: true,
-              expandedHeight: 200.0, // Control the height of the profile header
+              expandedHeight: 240.0, // Control the height of the profile header
               forceElevated: innerBoxIsScrolled,
 
               flexibleSpace: FlexibleSpaceBar(
@@ -357,7 +345,6 @@ class _GuestProfilePageState extends State<GuestProfilePage>
               onRefresh: () => _loadProfileAndPosts(widget.userId),
               child: _buildPaginatedPostList(
                 posts: _userPosts,
-                controller: _userPostsController,
                 isLoading: _userPostsLoading,
                 hasMore: _userPostsHasMore,
                 emptyMessage: 'This user hasn\'t posted anything yet.',
@@ -369,7 +356,6 @@ class _GuestProfilePageState extends State<GuestProfilePage>
               onRefresh: () => _loadProfileAndPosts(widget.userId),
               child: _buildPaginatedPostList(
                 posts: _likedPosts,
-                controller: _likedPostsController,
                 isLoading: _likedPostsLoading,
                 hasMore: _likedPostsHasMore,
                 emptyMessage: 'This user hasn\'t liked any posts yet.',
@@ -383,7 +369,6 @@ class _GuestProfilePageState extends State<GuestProfilePage>
 
   Widget _buildPaginatedPostList({
     required List<Map<String, dynamic>> posts,
-    required ScrollController controller,
     required bool isLoading,
     required bool hasMore,
     required String emptyMessage,
@@ -398,26 +383,41 @@ class _GuestProfilePageState extends State<GuestProfilePage>
       );
     }
 
-    return ListView.builder(
-      controller: controller,
-      itemCount: posts.length + (hasMore ? 1 : 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-      itemBuilder: (context, index) {
-        if (index >= posts.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(child: CircularProgressIndicator()),
-          );
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollUpdateNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels >= metrics.maxScrollExtent - 200) {
+            if (identical(posts, _userPosts)) {
+              if (!_userPostsLoading && _userPostsHasMore) _fetchUserPostsPage(widget.userId);
+            } else if (identical(posts, _likedPosts)) {
+              if (!_likedPostsLoading && _likedPostsHasMore) _fetchLikedPostsPage(widget.userId);
+            }
+          }
         }
-        final post = posts[index];
-        return InkWell(
-          onTap: () {
-            final postId = post['id'] as String?;
-            if (postId != null) context.push('/post_detail/$postId');
-          },
-          child: _buildPostCard(post),
-        );
+        return false;
       },
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: posts.length + (hasMore ? 1 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+        itemBuilder: (context, index) {
+          if (index >= posts.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final post = posts[index];
+          return InkWell(
+            onTap: () {
+              final postId = post['id'] as String?;
+              if (postId != null) context.push('/post_detail/$postId');
+            },
+            child: _buildPostCard(post),
+          );
+        },
+      ),
     );
   }
 }

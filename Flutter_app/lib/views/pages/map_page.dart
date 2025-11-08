@@ -16,6 +16,7 @@ class _MapPageState extends State<MapPage> {
   final LatLng _center = const LatLng(14.5995, 120.9842);
   Position? _currentPosition;
   bool _isLoadingLocation = false;
+  bool _hasLocationPermission = false;
   bool _isSearchingStores = false;
   Map<String, dynamic>? _storeResults;
   String? _errorMessage;
@@ -25,8 +26,20 @@ class _MapPageState extends State<MapPage> {
   void initState() {
     super.initState();
     // Delay location request to avoid immediate errors on map initialization
-    Future.delayed(const Duration(seconds: 1), () {
-      _getCurrentLocation();
+    Future.delayed(const Duration(seconds: 1), () async {
+      // Ensure we have runtime permission first (will prompt the user).
+      final granted = await LocationService.requestPermission();
+      setState(() {
+        _hasLocationPermission = granted;
+      });
+
+      if (granted) {
+        await _getCurrentLocation();
+      } else {
+        setState(() {
+          _errorMessage = 'Location permission not granted. Tap "Enable Location" to grant permissions.';
+        });
+      }
     });
   }
 
@@ -165,8 +178,9 @@ class _MapPageState extends State<MapPage> {
             onMapCreated: _onMapCreated,
             initialCameraPosition: CameraPosition(target: _center, zoom: 11.0),
             markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            // Enable location layer only when permission is granted.
+            myLocationEnabled: _hasLocationPermission,
+            myLocationButtonEnabled: _hasLocationPermission,
           ),
 
           // Top control panel
@@ -227,6 +241,29 @@ class _MapPageState extends State<MapPage> {
                         backgroundColor: Colors.teal,
                       ),
                     ),
+
+                    // If permission not granted, show a button to prompt user
+                    if (!_hasLocationPermission)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              _isLoadingLocation = true;
+                              _errorMessage = null;
+                            });
+                            final granted = await LocationService.requestPermission();
+                            setState(() {
+                              _hasLocationPermission = granted;
+                              _isLoadingLocation = false;
+                            });
+                            if (granted) await _getCurrentLocation();
+                          },
+                          icon: const Icon(Icons.location_searching),
+                          label: const Text('Enable Location'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                        ),
+                      ),
 
                     // Error message
                     if (_errorMessage != null)
