@@ -42,11 +42,17 @@ limiter = Limiter(
 )
 
 # Initialize Google APIs (you'll need to set environment variables for API keys)
+vision_client = None
 try:
-    vision_client = vision.ImageAnnotatorClient()
-    logger.info("Google Vision API client initialized successfully")
+    # Only try to initialize Vision client if service account credentials are available
+    # This prevents hanging on credential detection
+    if os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+        vision_client = vision.ImageAnnotatorClient()
+        logger.info("Google Vision API client initialized successfully")
+    else:
+        logger.info("Google Vision service account not configured, will use API key method")
 except Exception as e:
-    logger.warning(f"Google Vision API not configured: {e}")
+    logger.warning(f"Google Vision API client initialization skipped: {e}")
     vision_client = None
 
 # Alternative: Use Vision API with REST calls (more reliable with API key)
@@ -469,14 +475,72 @@ def map_ai():
 
 @app.route('/')
 def home():
+    # Check if models are loaded
+    models_status = {
+        'resnet50_loaded': model is not None,
+        'vision_client_ready': vision_client is not None,
+        'vision_api_key_set': vision_api_key is not None and vision_api_key != '',
+        'gmaps_ready': gmaps is not None,
+        'imagenet_classes_loaded': classes is not None
+    }
+    
     return jsonify({
         'status': 'running',
         'message': 'AI Backend Service is running',
+        'models': models_status,
         'endpoints': {
             'analyze': 'POST /analyze - Analyze images for media types',
-            'map_ai': 'POST /map-ai - Find nearby stores'
+            'map_ai': 'POST /map-ai - Find nearby stores',
+            'warmup': 'GET /warmup - Warmup AI models'
         }
     })
+
+@app.route('/warmup')
+def warmup():
+    """Explicit warmup endpoint to trigger model loading and initialization"""
+    try:
+        logger.info("Warmup request received - checking AI models...")
+        
+        # Test that torch model is accessible
+        if model is not None:
+            _ = model.eval()
+            logger.info("✓ ResNet50 model ready")
+        
+        # Test Vision API if configured
+        vision_ready = False
+        if vision_client is not None:
+            try:
+                # Quick check that client is initialized
+                vision_ready = True
+                logger.info("✓ Google Vision client ready")
+            except Exception as e:
+                logger.warning(f"Vision client check failed: {e}")
+        
+        if vision_api_key:
+            vision_ready = True
+            logger.info("✓ Google Vision API key configured")
+        
+        # Test Maps API if configured
+        maps_ready = gmaps is not None
+        if maps_ready:
+            logger.info("✓ Google Maps client ready")
+        
+        return jsonify({
+            'success': True,
+            'message': 'AI backend warmed up successfully',
+            'models': {
+                'resnet50': model is not None,
+                'vision_api': vision_ready,
+                'google_maps': maps_ready,
+                'imagenet_classes': classes is not None
+            }
+        })
+    except Exception as e:
+        logger.error(f"Warmup failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     # Production-ready configuration
