@@ -4,19 +4,56 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
+// Allow overriding the API base URL at build time:
+// flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+const String kApiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
 class BackendService {
-  // Use a platform-aware backend URL. When running on Android emulators
-  // the host machine's localhost is reachable at 10.0.2.2. For iOS
-  // simulator and web (dev) we can use 127.0.0.1. Change these values
-  // if you're using a device or a different emulator (Genymotion uses
-  // 10.0.3.2) or point to a LAN/remote address for real devices.
+  // Base URL selection rules:
+  // 1) If API_BASE_URL is passed via --dart-define, use it (prod/staging).
+  // 2) Otherwise, use platform-aware localhost defaults for development.
   static String get baseUrl {
+    if (kApiBaseUrl.isNotEmpty) return kApiBaseUrl;
     if (kIsWeb) return 'http://127.0.0.1:5000';
-    // defaultTargetPlatform is safe to use across platforms (no dart:io import)
     if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android emulator maps host 127.0.0.1 to 10.0.2.2
       return 'http://10.0.2.2:5000';
     }
     return 'http://127.0.0.1:5000'; // iOS simulator / desktop
+  }
+
+  // Lightweight healthcheck/warmup that can be called on app start.
+  // This also triggers model loading on the backend to reduce first-request latency.
+  static Future<bool> ping() async {
+    try {
+      if (kDebugMode) {
+        print('[BackendService] Warming up AI backend at $baseUrl...');
+      }
+      // Use /warmup endpoint to explicitly trigger model initialization
+      final resp = await http
+          .get(Uri.parse('$baseUrl/warmup'))
+          .timeout(const Duration(seconds: 10));
+      
+      if (resp.statusCode == 200) {
+        if (kDebugMode) {
+          final data = json.decode(resp.body);
+          print('[BackendService] ✓ Backend is ready and responding');
+          print('[BackendService] Models loaded: ${data['models']}');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('[BackendService] ⚠ Backend responded with status ${resp.statusCode}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[BackendService] ⚠ Backend warmup failed: $e');
+        print('[BackendService] → This is OK if testing offline or backend not started');
+      }
+      return false;
+    }
   }
 
   // Helper methods for web file handling

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/data/notifiers.dart';
 import 'package:flutter_app/views/router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_app/services/backend_service.dart';
 
 
 Future<void> main() async {
@@ -11,7 +12,16 @@ Future<void> main() async {
     url: 'https://cfprqgciucpwwszdtrjg.supabase.co', 
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmcHJxZ2NpdWNwd3dzemR0cmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTk1NDgsImV4cCI6MjA3NTg3NTU0OH0.q3_rJp41k2EifCRYYENUybANuXEsjI0tAxOzA-7x-qo');
 
-  runApp(const MyApp());  
+  // Warm up the AI backend in the background immediately on app start.
+  // This triggers the backend to load AI models (ResNet50, Vision API setup)
+  // so the first user request doesn't have to wait for cold start.
+  // The app won't block or fail if the backend is offline.
+  debugPrint('[App] Starting AI backend warmup...');
+  BackendService.ping().then((success) {
+    debugPrint('[App] AI backend warmup completed: ${success ? "SUCCESS" : "FAILED (offline?)"}');
+  });
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -36,3 +46,4 @@ class MyApp extends StatelessWidget {
     );
   } 
 }
+
